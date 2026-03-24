@@ -5,7 +5,7 @@
 ## Запуск
 
 ```bash
-docker-compose up -d --build
+make up
 ```
 
 ## Проверка
