@@ -12,7 +12,7 @@ BATCH_SIZE = 1000
 
 
 def run_consumer() -> None:
-    # init_tables()
+    init_tables()
     client = get_clickhouse_client()
     consumer = get_consumer(KAFKA_TOPIC_USERS, KAFKA_CONSUMER_GROUP_USERS)
 

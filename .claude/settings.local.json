@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wsl.exe -d Ubuntu -- bash -ic \"cd /home/apik6 && docker compose up -d --build\")"
+    ]
+  }
+}
