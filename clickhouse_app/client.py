@@ -1,8 +1,6 @@
-import os
-
 import clickhouse_connect
 
-CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
+from config import CLICKHOUSE_HOST
 
 _client = None
 

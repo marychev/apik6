@@ -3,9 +3,23 @@ services:
     build: .
     ports:
       - "8000:8000"
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - kafka
+    restart: on-failure
+
+  consumer:
+    build: .
+    command: ["python", "-m", "kafka_app.user_consumer"]
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       - kafka
       - clickhouse
+    restart: on-failure
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -33,6 +47,9 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ""
     ports:
       - "8123:8123"
       - "9000:9000"
