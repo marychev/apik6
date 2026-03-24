@@ -1,8 +1,9 @@
 import json
+import os
 
 from kafka import KafkaConsumer
 
-BOOTSTRAP_SERVERS = "kafka:9092"
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9093")
 
 
 def get_consumer(topic: str, group_id: str) -> KafkaConsumer:
