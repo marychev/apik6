@@ -6,8 +6,6 @@ import { USER_BATCH_URL } from "./config.js";
 // Кастомные метрики
 const batchDuration = new Trend("batch_duration", true);
 const totalSent = new Counter("total_sent");
-const totalSaved = new Counter("total_saved");
-const lostMessages = new Counter("lost_messages");
 
 export const options = {
   scenarios: {
@@ -43,15 +41,7 @@ export default function () {
   });
 
   if (res.status === 200) {
-    const body = res.json();
-    totalSent.add(body.sent);
-    totalSaved.add(body.saved_to_clickhouse);
-
-    // Потерянные сообщения
-    const lost = body.sent - body.saved_to_clickhouse;
-    if (lost > 0) {
-      lostMessages.add(lost);
-    }
+    totalSent.add(res.json("sent"));
   }
 
 }

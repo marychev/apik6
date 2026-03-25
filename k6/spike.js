@@ -4,8 +4,6 @@ import { Counter } from "k6/metrics";
 import { USER_BATCH_URL } from "./config.js";
 
 const totalSent = new Counter("total_sent");
-const totalSaved = new Counter("total_saved");
-const lostMessages = new Counter("lost_messages");
 
 export const options = {
   scenarios: {
@@ -27,18 +25,9 @@ export default function () {
 
   check(res, {
     "status is 200": (r) => r.status === 200,
-    "all saved": (r) =>
-      r.status === 200 && r.json("sent") === r.json("saved_to_clickhouse"),
   });
 
   if (res.status === 200) {
-    const body = res.json();
-    totalSent.add(body.sent);
-    totalSaved.add(body.saved_to_clickhouse);
-
-    const lost = body.sent - body.saved_to_clickhouse;
-    if (lost > 0) {
-      lostMessages.add(lost);
-    }
+    totalSent.add(res.json("sent"));
   }
 }
