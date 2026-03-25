@@ -16,16 +16,16 @@ export const options = {
     // Сценарий 1: Нарастающая нагрузка
     ramp_up: {
       executor: "ramping-arrival-rate",
-      startRate: 5,
+      startRate: 10,
       timeUnit: "1s",
       preAllocatedVUs: 50,
-      maxVUs: 200,
+      maxVUs: 300,
       stages: [
-        { duration: "15s", target: 10 },   // разогрев
-        { duration: "15s", target: 30 },   // средняя нагрузка
-        { duration: "15s", target: 60 },   // высокая нагрузка
-        { duration: "15s", target: 100 },  // пиковая нагрузка
-        { duration: "10s", target: 5 },    // остывание
+        { duration: "10s", target: 50 },    // быстрый разогрев
+        { duration: "15s", target: 100 },   // средняя нагрузка
+        { duration: "15s", target: 150 },   // высокая нагрузка
+        { duration: "15s", target: 200 },   // пиковая нагрузка
+        { duration: "10s", target: 10 },    // остывание
       ],
       exec: "loadTest",
     },
@@ -35,14 +35,14 @@ export const options = {
       executor: "shared-iterations",
       vus: 1,
       iterations: 1,
-      startTime: "75s",  // после ramp_up (70s) + 5s буфер
+      startTime: "70s",  // после ramp_up (65s) + 5s буфер
       exec: "measureLag",
     },
   },
   thresholds: {
-    http_req_duration: ["p(95)<5000"],       // 95% запросов < 5 сек
-    http_req_failed: ["rate<0.1"],           // < 10% ошибок
-    batch_duration: ["p(95)<5000"],          // полный цикл batch < 5 сек
+    http_req_duration: ["p(95)<500"],        // 95% запросов < 500 мс
+    http_req_failed: ["rate<0.05"],          // < 5% ошибок
+    batch_duration: ["p(95)<500"],           // полный цикл batch < 500 мс
   },
 };
 

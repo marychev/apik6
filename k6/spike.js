@@ -7,16 +7,16 @@ const totalSent = new Counter("total_sent");
 
 export const options = {
   scenarios: {
-    // Спайк: резкий всплеск — что будет если 50 VU одновременно запросят batch/1
+    // Спайк: резкий всплеск — 200 VU одновременно
     spike: {
       executor: "shared-iterations",
-      vus: 50,
-      iterations: 50,
+      vus: 200,
+      iterations: 200,
       maxDuration: "2m",
     },
   },
   thresholds: {
-    http_req_failed: ["rate<0.3"],
+    http_req_failed: ["rate<0.1"],
   },
 };
 

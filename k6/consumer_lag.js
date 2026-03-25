@@ -15,15 +15,14 @@ const lagMessages = new Gauge("lag_messages");         // сообщений д�
 
 export const options = {
   scenarios: {
-    // Фаза 1: Нагрузка на consumer — batch/1000 × ramping VUs
-    // Цель: ~10,000 сообщений
+    // Фаза 1: Тяжёлая нагрузка на consumer — batch/1000 × ramping VUs
     load: {
       executor: "ramping-vus",
       startVUs: 1,
       stages: [
-        { duration: "10s", target: 3 },    // разогрев
-        { duration: "15s", target: 5 },    // основная нагрузка
-        { duration: "15s", target: 10 },   // пиковая нагрузка
+        { duration: "10s", target: 5 },    // разогрев
+        { duration: "15s", target: 10 },   // основная нагрузка
+        { duration: "15s", target: 20 },   // пиковая нагрузка
         { duration: "10s", target: 1 },    // остывание
       ],
       exec: "loadTest",
