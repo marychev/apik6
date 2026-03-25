@@ -1,4 +1,4 @@
-.PHONY: up down build logs restart ps clean k6-throughput k6-stress k6-spike
+.PHONY: up down build logs restart ps clean k6-throughput k6-spike k6-consumer-lag
 
 up:
 	docker compose up -d --build
@@ -24,8 +24,8 @@ clean:
 k6-throughput:
 	k6 run k6/throughput.js
 
-k6-stress:
-	k6 run k6/stress.js
-
 k6-spike:
 	k6 run k6/spike.js
+
+k6-consumer-lag:
+	k6 run k6/consumer_lag.js
