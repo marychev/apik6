@@ -7,7 +7,8 @@ services:
       CLICKHOUSE_HOST: clickhouse
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     restart: on-failure
 
   consumer:
@@ -17,8 +18,10 @@ services:
       CLICKHOUSE_HOST: clickhouse
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - kafka
-      - clickhouse
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_started
     restart: on-failure
 
   zookeeper:
@@ -44,6 +47,14 @@ services:
       - "9093:9093"
     depends_on:
       - zookeeper
+    #  Kafka проверяется через kafka-broker-api-versions — это встроенная утилита в образе Confluent, 
+    # которая реально проверяет, что брокер отвечает. Consumer и API стартанут только после того, как Kafka станет healthy.
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest

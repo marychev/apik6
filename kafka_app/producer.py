@@ -8,6 +8,10 @@ _producer: KafkaProducer | None = None
 
 
 def get_producer() -> KafkaProducer:
+    """
+    Продюсер создаётся один раз и переиспользуется (ленивая инициализация) 
+    Без этого каждый вызов создавал бы новое TCP-соединение к Kafka — это дорого. 
+    """
     global _producer
     if _producer is None:
         _producer = KafkaProducer(
