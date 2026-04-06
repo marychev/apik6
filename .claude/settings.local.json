@@ -1,11 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wsl.exe -d Ubuntu -- bash -ic \"cd /home/apik6 && docker compose up -d --build\")"
+      "Bash(wsl.exe -d Ubuntu -- bash -ic \"cd /home/apik6 && docker compose up -d --build\")",
+      "Read(///wsl.localhost/Ubuntu/home/apik6/**)",
+      "Read(///wsl.localhost/Ubuntu/home/**)",
+      "Read(//mnt/c/Users/Garpix/Documents/Worklog/**)",
+      "Bash(cmd.exe /c \"dir C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Path 'C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix' -Recurse | Select-Object FullName, Length\")",
+      "Bash(powershell.exe -Command \"Get-Content 'C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix\\\\amnezia_config.vpn.json' -Raw\")",
+      "Bash(powershell.exe -Command \"Get-Content 'C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix\\\\amnezia_config.vpn' -Raw\")",
+      "Bash(powershell.exe -Command \"\\(Get-Content 'C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix\\\\amnezia_config \\(2\\).vpn' -Raw\\).Substring\\(0, 500\\)\")",
+      "Bash(powershell.exe -Command \"\\(Get-Content 'C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix\\\\amnezia_config \\(3\\).vpn' -Raw\\).Substring\\(0, 500\\)\")",
+      "Bash(lscpu)",
+      "Read(///wsl.localhost/Ubuntu/proc/**)",
+      "Bash(docker info:*)"
     ],
     "additionalDirectories": [
       "\\home\\apik6\\k6",
-      "\\\\wsl.localhost\\Ubuntu\\home\\apik6\\k6"
+      "\\\\wsl.localhost\\Ubuntu\\home\\apik6\\k6",
+      "\\home\\apik6",
+      "\\\\wsl.localhost\\Ubuntu\\home\\apik6"
     ]
   }
 }
