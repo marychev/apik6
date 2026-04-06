@@ -2,6 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(wsl.exe -d Ubuntu -- bash -ic \"cd /home/apik6 && docker compose up -d --build\")"
+    ],
+    "additionalDirectories": [
+      "\\home\\apik6\\k6",
+      "\\\\wsl.localhost\\Ubuntu\\home\\apik6\\k6"
     ]
   }
 }
