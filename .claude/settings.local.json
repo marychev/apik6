@@ -13,7 +13,8 @@
       "Bash(powershell.exe -Command \"\\(Get-Content 'C:\\\\Users\\\\Garpix\\\\Documents\\\\Worklog\\\\InfoMatrix\\\\amnezia_config \\(3\\).vpn' -Raw\\).Substring\\(0, 500\\)\")",
       "Bash(lscpu)",
       "Read(///wsl.localhost/Ubuntu/proc/**)",
-      "Bash(docker info:*)"
+      "Bash(docker info:*)",
+      "WebFetch(domain:ivanovo.hh.ru)"
     ],
     "additionalDirectories": [
       "\\home\\apik6\\k6",
