@@ -4,7 +4,7 @@ Async-продюсер на aiokafka.
 Singleton создаётся через FastAPI lifespan и хранится в app.state —
 привязка к event loop требует инициализации в async контексте.
 """
-import json
+import orjson
 
 from aiokafka import AIOKafkaProducer
 
@@ -14,7 +14,7 @@ from config import KAFKA_BOOTSTRAP_SERVERS
 async def create_producer() -> AIOKafkaProducer:
     producer = AIOKafkaProducer(
         bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        value_serializer=lambda v: orjson.dumps(v),
         key_serializer=lambda k: k.encode("utf-8"),
         linger_ms=20,
         max_batch_size=65536,

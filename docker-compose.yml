@@ -6,6 +6,7 @@ services:
     environment:
       CLICKHOUSE_HOST: clickhouse
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-5}
     depends_on:
       kafka:
         condition: service_healthy

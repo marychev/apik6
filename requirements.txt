@@ -2,4 +2,5 @@ fastapi
 uvicorn[standard]
 kafka-python
 aiokafka[lz4]
+orjson
 clickhouse-connect
