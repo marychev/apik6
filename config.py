@@ -7,6 +7,7 @@ KAFKA_CONSUMER_GROUP_USERS = "user-clickhouse"
 KAFKA_AUTO_OFFSET_RESET = "earliest"
 KAFKA_CONSUMER_TIMEOUT_MS = 10000
 
+
 # ClickHouse
 CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CLICKHOUSE_TABLE_USERS = "users"

@@ -1,30 +1,25 @@
+"""
+Async-продюсер на aiokafka.
+
+Singleton создаётся через FastAPI lifespan и хранится в app.state —
+привязка к event loop требует инициализации в async контексте.
+"""
 import json
 
-from kafka import KafkaProducer
+from aiokafka import AIOKafkaProducer
 
 from config import KAFKA_BOOTSTRAP_SERVERS
 
-_producer: KafkaProducer | None = None
+
+async def create_producer() -> AIOKafkaProducer:
+    producer = AIOKafkaProducer(
+        bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        key_serializer=lambda k: k.encode("utf-8"),
+    )
+    await producer.start()
+    return producer
 
 
-def get_producer() -> KafkaProducer:
-    """
-    Продюсер создаётся один раз и переиспользуется (ленивая инициализация) 
-    Без этого каждый вызов создавал бы новое TCP-соединение к Kafka — это дорого. 
-    """
-    global _producer
-    if _producer is None:
-        _producer = KafkaProducer(
-            bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-            key_serializer=lambda k: k.encode("utf-8"),
-        )
-    return _producer
-
-
-def close_producer() -> None:
-    global _producer
-    if _producer:
-        _producer.flush()
-        _producer.close()
-        _producer = None
+async def close_producer(producer: AIOKafkaProducer) -> None:
+    await producer.stop()

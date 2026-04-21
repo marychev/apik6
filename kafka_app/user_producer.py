@@ -1,19 +1,21 @@
 import logging
 
-from kafka_app.producer import get_producer
+from aiokafka import AIOKafkaProducer
+
 from app.schemas import UserResponse
 from config import KAFKA_TOPIC_USERS
 
 logger = logging.getLogger(__name__)
 
 
-def send_users_batch(users: list[UserResponse]) -> int:
-    producer = get_producer()
+async def send_users_batch(
+    producer: AIOKafkaProducer, users: list[UserResponse]
+) -> int:
     for user in users:
-        producer.send(
+        await producer.send(
             KAFKA_TOPIC_USERS, key=user.id, value=user.model_dump()
         )
-    producer.flush()
+    await producer.flush()
     n = len(users)
     logger.info(
         "Sent batch of %d users to Kafka topic '%s'", n, KAFKA_TOPIC_USERS
