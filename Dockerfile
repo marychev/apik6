@@ -10,4 +10,4 @@ COPY app/ app/
 COPY kafka_app/ kafka_app/
 COPY clickhouse_app/ clickhouse_app/
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main_async:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
