@@ -16,6 +16,10 @@ async def create_producer() -> AIOKafkaProducer:
         bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         key_serializer=lambda k: k.encode("utf-8"),
+        linger_ms=20,
+        max_batch_size=65536,
+        compression_type="lz4",
+        acks=1,
     )
     await producer.start()
     return producer

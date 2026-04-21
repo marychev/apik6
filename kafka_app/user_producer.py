@@ -15,9 +15,8 @@ async def send_users_batch(
         await producer.send(
             KAFKA_TOPIC_USERS, key=user.id, value=user.model_dump()
         )
-    await producer.flush()
     n = len(users)
     logger.info(
-        "Sent batch of %d users to Kafka topic '%s'", n, KAFKA_TOPIC_USERS
+        "Enqueued batch of %d users to Kafka topic '%s'", n, KAFKA_TOPIC_USERS
     )
     return n
