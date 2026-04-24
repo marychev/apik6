@@ -99,6 +99,7 @@ GIL: 0.00%, Active: 0.00%, Threads: 1
   0.00% 100.00%   0.000s    97.00s   main (click/core.py)
 ```
 
+
 ### Следующий шаг
 
 Профилировать отдельные uvicorn-воркеры (дочерние процессы), которые появляются при запуске с `--workers 5`.
@@ -181,3 +182,199 @@ def profile_function(func, *args, **kwargs):
 ### Следующий шаг
 
 Добавить middleware в приложение и протестировать на endpoint.
+
+---
+
+
+## Austin
+
+### Установка
+
+`austin` из apt — устаревший (1.x), несовместим с `austin-tui` (ждёт бинарный формат MOJO, получает текст → `ValueError: Not a MOJO stream`). Берём бинарник из релиза 3.7.0:
+
+```bash
+sudo apt remove -y austin
+cd /tmp
+wget https://github.com/P403n1x87/austin/releases/download/v3.7.0/austin-3.7.0-gnu-linux-amd64.tar.xz
+tar -xf austin-3.7.0-gnu-linux-amd64.tar.xz
+sudo mv austin /usr/local/bin/austin
+austin --version   # 3.7.0
+```
+
+Снять защиту ptrace для attach к чужому PID (до перезагрузки):
+
+```bash
+sudo sysctl kernel.yama.ptrace_scope=0
+```
+
+`austin-tui` не завёлся (версионный конфликт формата). Работаем напрямую через `austin -o file` — для документации даже удобнее, сразу получаем текстовый collapsed-формат.
+
+### Находим воркер (не мастер!)
+
+```bash
+ps auxf | grep uvicorn                 # найти PID мастера
+pgrep -P <MASTER_PID> -a               # дети мастера
+```
+
+Воркеры: `spawn_main ... --multiprocessing-fork` (5 штук при `--workers 5`). Плюс один `resource_tracker` — служебный, не трогаем.
+
+### Анализ collapsed-файла
+
+Формат: каждая строка — путь вызова через `;`, в конце число μs этого сэмпла.
+
+```
+P263578;T0:9;...;asyncio/runners.py:Runner.run:118 10569
+```
+
+Топ leaf-функций (фильтр `/^[^#]/` отбрасывает строки метаданных типа `# duration:`):
+
+```bash
+awk -F';' '/^[^#]/ {
+  n = split($NF, a, " ")
+  t = a[n]
+  leaf = a[1]; for (i=2; i<n; i++) leaf = leaf " " a[i]
+  totals[leaf] += t
+} END { for (f in totals) printf "%12d μs  %s\n", totals[f], f }' \
+/tmp/profile.austin | sort -rn | head -15
+```
+
+### Мои запуски
+
+> Важный момент про воркеры
+Профилируем один воркер из пяти. Значит, в топе увидим то, что делает конкретно он (обработку части запросов), а не картину «мастер ждёт воркеров», как было с py-spy. Это наша настоящая цель.
+
+```sh
+sudo austin -i 10000 -t 60000 -o /tmp/profile.austin --pid 263578
+# -i 10000 = сэмпл каждые 10 мс
+# -t 60000 = работать 60 секунд и выйти
+```
+
+Wall-clock топ — теперь всё честно
+```
+μs	        функция	                                смысл
+146 963 022	Connection._recv:395	                  pong-thread весь прогон ждал ping мастера
+90 183 424	Runner.run:118	asyncio                 event loop в epoll_wait
+6 450 289	  StreamHandler.flush:1144	              логи — flush stdout/stderr
+1 594 055	  ipaddress.ip_address:54	                парсинг IP-адреса клиента (access-log?)
+1 415 494	  socket.detach:515	
+1 215 540	  starlette/_exception_handler	          обработка запроса (top-frame Starlette)
+1 113 246	  uvicorn httptools.on_response_complete	завершение ответа
+1 032 921	  pydantic.BaseModel.__init__:263	        создание моделей
+915 288	    logging._acquireLock:240	              лок логгера
+```
+Даже в wall-clock первые две строки — это ожидания (pong и asyncio), а после них уже появляются настоящие горячие места:
+- Логирование (~7.4s суммарно): StreamHandler.flush + _acquireLock. Это подозрительно — в недавнем коммите ты уже drop hot-path logger, но на воркере всё ещё 6.4 сек во flush. Это, скорее всего, uvicorn access log. Если его выключить — можно получить сразу заметный выигрыш.
+- pydantic.BaseModel.init (~1s) — создание моделей на каждый запрос.
+- ipaddress.ip_address (~1.6s) — тоже вероятно access-log, X-Forwarded-For парсит.
+
+### CPU-mode прогон
+
+Повторили тот же сценарий с флагом `-C` — Austin считает только время, когда поток реально на CPU:
+
+```bash
+sudo austin -C -i 10000 -t 60000 -o /tmp/profile.austin.cpu --pid <WORKER_PID>
+```
+
+Топ CPU-mode:
+
+| μs | функция |
+|---|---|
+| 26 829 410 | `multiprocessing/connection.py:Connection._recv:395` |
+| 26 797 641 | `asyncio/runners.py:Runner.run:118` |
+| 5 420 184 | `threading.py:Condition.wait:359` |
+| 5 318 475 | `multiprocessing/resource_tracker.py:main:251` |
+| < 11 ms | всё остальное — pydantic, orjson, starlette **отсутствуют** |
+
+В wall-clock мы видели 6.4s в `StreamHandler.flush`, 1s в pydantic, 1.6s в ipaddress. В CPU-mode их нет. Это главный урок этого прогона — объяснение ниже в выводах.
+
+### Сравнение прогонов и overhead самого Austin
+
+| Конфиг | RPS | VUS (факт) | p(95) | errors |
+|---|---|---|---|---|
+| py-spy на мастере (baseline) | 1683–1991 | 231–547 | 1.85–2.55s | 0.24–0.50% |
+| austin wall-clock на воркере | 1232 | 355–2500 | 5.18s | 0.23% |
+| austin CPU-mode на воркере | **1720** | 1906–2500 | 2.15s | 0.03% |
+
+Wall-clock режим просаживает RPS на ~30%. CPU-mode возвращает производительность к baseline. На проде — только `-C`.
+
+### Выводы
+
+1. **Python-сэмплер не видит native-код.** Austin раскручивает только Python-стек. Под `Runner.run:118` внутри asyncio — нативный `epoll_wait` в C, на экране это один Python-кадр. То же для pydantic v2 (Rust-ядро), orjson (C), httptools (C), clickhouse-driver (частично C).
+2. **Wall-clock mode ≠ где горит CPU.** В топе доминируют ожидания (pong-recv, epoll_wait). Смотреть надо **ниже** первых 2 строк — там реальные горячие Python-места, но с оговоркой из п.1: время native-кода приписывается ближайшему Python-родителю.
+3. **Логирование — заметная статья расходов.** `StreamHandler.flush` 6.4 с + `_acquireLock` 0.9 с за минуту на один воркер — кандидаты на отключение uvicorn access log или переход на асинхронный handler.
+4. **CPU-mode вытягивает только Python-CPU.** На стеке с нативными расширениями (pydantic-core Rust, orjson C) CPU-mode даёт почти пустой топ. Это НЕ значит, что приложение простаивает — это значит, что узкое место **в C/Rust**, куда Python-сэмплерам хода нет. Чтобы заглянуть туда, нужен сэмплер с native-stacks (py-spy `--native`, perf, Scalene).
+5. **Austin сам добавляет overhead.** Wall-clock на воркере уронил RPS с ~1700 до 1232. На проде — только `-C`.
+6. **Картина с py-spy согласуется.** py-spy на мастере видел `threading.wait` (координация), Austin на воркере видит `Runner.run` + `Connection._recv` (asyncio + pong-thread). Оба сэмплера рисуют одно и то же: воркер большую часть wall-времени **ждёт**.
+
+### Следующий шаг
+
+1. Проверить гипотезу про логирование: отключить uvicorn access log (`--access-log=False`) → прогон k6 без профайлера → сравнить RPS.
+2. Попробовать **py-spy с `--native`** или **Scalene** — они умеют заглянуть в C-расширения и закроют слепую зону CPU-mode Austin.
+
+---
+
+## Scalene: практика (попытка)
+
+### Что пробовали
+
+Scalene позиционирует себя как профайлер, показывающий Python vs native vs system time, плюс память. Хотелось закрыть слепую зону Austin CPU-mode (время в C/Rust расширениях).
+
+В отличие от py-spy и Austin, Scalene **не умеет attach к уже запущенному процессу**: только launch-time. Поэтому запускали внутри api-контейнера через `docker compose run`, обернув uvicorn в тонкий launcher-скрипт:
+
+```bash
+docker compose stop api
+docker rm -f api_profile 2>/dev/null
+
+docker compose run --service-ports --name api_profile api sh -c '
+  pip install -q "scalene<2" &&
+  cat > /tmp/run_uvicorn.py <<PYEOF
+import uvicorn
+config = uvicorn.Config("app.main:app", host="0.0.0.0", port=8000)
+uvicorn.Server(config).run()
+PYEOF
+  scalene --cli --profile-all \
+          --profile-only "/code,starlette,fastapi,uvicorn,pydantic,orjson" \
+          --outfile /tmp/scalene.txt /tmp/run_uvicorn.py
+'
+```
+
+### На какие грабли наступили
+
+1. **Scalene 2.2.1 vs 1.5.x — разный CLI.** В свежей версии `run`/`view` как подкоманды, `run` поддерживает всего 4 флага и не принимает `-m module`. Пришлось пинить `pip install "scalene<2"`.
+2. **Нет `-m module` — нужен wrapper-скрипт.** Scalene 1.x тоже принимает только файл. Написали двухстрочную обёртку `run_uvicorn.py`.
+3. **`uvicorn.run(..., workers=1)` запускает supervisor + форкает ребёнка.** Scalene профилирует supervisor, который ничего не делает. Пришлось переписать обёртку на явный `Config + Server().run()` — in-process, без supervisor.
+4. **Default `profile-all` не включён.** Без него Scalene видит только сам target-файл. При 2-строчном wrapper-е отчёт получается почти пустой.
+5. **SIGINT не гарантирует запись отчёта.** Контейнер выходил с кодом 130 (SIGINT), `/tmp/scalene.txt` в нём не создавался. Пробовали `--profile-interval 20` и bind-mount на хост — итогом так и не получили отчёт с реальным наполнением.
+6. **Overhead катастрофический на async-стеке.** Даже в тех прогонах, где отчёт записался:
+   | Конфиг | RPS | p(95) | errors |
+   |---|---|---|---|
+   | py-spy на мастере (baseline) | 1683–1991 | 1.85–2.55s | 0.24–0.50% |
+   | Scalene workers=1 (first try) | 414 | 58.58s | 8.50% |
+   | Scalene in-process (Server.run) | 626 | 4.43s | 2.03% |
+
+### Что получилось в отчётах
+
+Все полученные файлы (22 строки) содержали только:
+- сам wrapper `/tmp/run_uvicorn.py` с `64% Python / 7% native / 28% system` на строке `uvicorn.Server(config).run()`
+- случайно зацепленный `/code/clickhouse_app/client.py` с нулевым CPU
+
+Ни starlette, ни fastapi, ни pydantic в отчёты не попали, несмотря на `--profile-all` и `--profile-only`.
+
+### Почему свернули
+
+Соотношение «потраченное время / полученная информация» ушло в минус. Scalene построен под CPU-bound синхронные скрипты; на FastAPI/asyncio в контейнере он требует слишком много подгонки (wrapper, env, сигнал-хэндлинг, bind-mount, версия), и даже при всём этом таргетная информация (Python vs native разбивка по pydantic/orjson) не вытягивается надёжно. Для этой задачи корректнее **py-spy --native** или **perf**, которые видят C-стеки напрямую.
+
+### Выводы
+
+1. **Scalene плохо дружит с async-сервером в контейнере.** Для скрипт-подобных CPU-нагрузок — ок, для FastAPI/uvicorn — слишком хрупко.
+2. **`uvicorn.run(workers=N)` всегда поднимает supervisor,** даже при N=1. Для in-process запуска под профайлером нужен явный `Server(config).run()`.
+3. **Default Scalene профилирует только target-файл.** Для реального приложения обязательно `--profile-all`, иначе отчёт пустой.
+4. **Сигнал-хэндлинг Scalene + uvicorn + docker** — зона риска. `--profile-interval` + bind-mount на хост надёжнее, чем надеяться на чистый shutdown.
+
+---
+
+## Итог обучения
+
+Освоили **py-spy** и **Austin** (оба sampling, низкий overhead). Этого достаточно, чтобы увидеть картину Python-слоя на FastAPI. Для заглядывания в C/Rust расширения — оставляем на будущее: `py-spy record --native` или `perf` на хосте.
+
+**cProfile**, **Pyinstrument**, **Pyroscope** не трогали в этом раунде — они требуют либо правки кода (middleware), либо отдельной инфраструктуры (сайдкар-сервер). Секции с теорией и заготовками оставлены для ориентации.

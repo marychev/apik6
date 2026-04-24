@@ -14,6 +14,57 @@ services:
         condition: service_started
     restart: on-failure
 
+  # api_go:
+  #   build: ./go_api
+  #   ports:
+  #     - "8001:8001"
+  #   environment:
+  #     KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   restart: on-failure
+  #   profiles: ["go"]
+
+  # api_starlette:
+  #   build: ./starlette_api
+  #   ports:
+  #     - "8002:8002"
+  #   environment:
+  #     KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  #     UVICORN_WORKERS: ${UVICORN_WORKERS:-5}
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   restart: on-failure
+  #   profiles: ["starlette"]
+
+  api_confluent:
+    build: ./app_confluent
+    ports:
+      - "8003:8003"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-5}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+    profiles: ["confluent"]
+
+  api_batched:
+    build: ./app_batched
+    ports:
+      - "8004:8004"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-5}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+    profiles: ["batched"]
+
   # ОТКЛЮЧЕНО в step_4: заменено на ClickHouse Kafka Engine (см. clickhouse_app/init_db.py)
   # consumer:
   #   build: .

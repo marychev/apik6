@@ -10,4 +10,4 @@ COPY app/ app/
 COPY kafka_app/ kafka_app/
 COPY clickhouse_app/ clickhouse_app/
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-5}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-5} --no-access-log"]
