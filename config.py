@@ -3,9 +3,6 @@ import os
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 KAFKA_TOPIC_USERS = "users"
-KAFKA_CONSUMER_GROUP_USERS = "user-clickhouse"
-KAFKA_AUTO_OFFSET_RESET = "earliest"
-KAFKA_CONSUMER_TIMEOUT_MS = 10000
 
 
 # ClickHouse

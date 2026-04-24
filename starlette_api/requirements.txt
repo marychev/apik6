@@ -1,0 +1,4 @@
+starlette
+uvicorn[standard]
+aiokafka[lz4]
+orjson
