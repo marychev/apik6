@@ -21,6 +21,11 @@ ps:
 clean:
 	docker compose down -v --remove-orphans
 
+full-clean:
+	docker compose down -v --remove-orphans
+	docker rmi $$(docker images -f "dangling=true" -q) || true
+	docker system prune -f --volumes
+
 k6-throughput:
 	k6 run k6/throughput.js
 

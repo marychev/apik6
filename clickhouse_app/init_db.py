@@ -3,6 +3,10 @@ from config import (
     CLICKHOUSE_TABLE_USERS,
     KAFKA_BOOTSTRAP_SERVERS,
     KAFKA_TOPIC_USERS,
+    KAFKA_ENGINE_NUM_CONSUMERS,
+    KAFKA_ENGINE_POLL_TIMEOUT_MS,
+    KAFKA_ENGINE_POLL_MAX_BATCH_SIZE,
+    KAFKA_ENGINE_FLUSH_INTERVAL_MS,
 )
 
 
@@ -30,10 +34,10 @@ def init_tables():
             kafka_topic_list = '{KAFKA_TOPIC_USERS}',
             kafka_group_name = 'clickhouse_users',
             kafka_format = 'JSONEachRow',
-            kafka_num_consumers = 1,
-            kafka_poll_timeout_ms = 5000,
-            kafka_poll_max_batch_size = 1000000, 
-            kafka_flush_interval_ms = 30000
+            kafka_num_consumers = {KAFKA_ENGINE_NUM_CONSUMERS},
+            kafka_poll_timeout_ms = {KAFKA_ENGINE_POLL_TIMEOUT_MS},
+            kafka_poll_max_batch_size = {KAFKA_ENGINE_POLL_MAX_BATCH_SIZE},
+            kafka_flush_interval_ms = {KAFKA_ENGINE_FLUSH_INTERVAL_MS}
     """)
 
     client.command(f"""

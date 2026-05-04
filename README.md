@@ -89,3 +89,58 @@ docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:90
 KAFKA_BOOTSTRAP_SERVERS=localhost:9093
 CLICKHOUSE_HOST=localhost
 ```
+
+## Важные команды для тестирования и настройки
+
+### Проверка Kafka топика
+
+```bash
+# Описание топика (партиции, репликация)
+docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --describe --topic users
+
+# Изменение количества партиций (если нужно увеличить)
+docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --alter --topic users --partitions 8
+```
+
+### Проверка ClickHouse таблицы
+
+```bash
+# Показать CREATE TABLE для users_kafka
+docker compose exec clickhouse clickhouse-client --query="SHOW CREATE TABLE users_kafka"
+
+# Изменение настроек Kafka Engine (если таблица уже существует)
+docker compose exec clickhouse clickhouse-client --query="ALTER TABLE users_kafka MODIFY SETTING kafka_num_consumers=4, kafka_poll_timeout_ms=1000, kafka_poll_max_batch_size=200000, kafka_flush_interval_ms=10000"
+```
+
+### Пересоздание ClickHouse таблиц
+
+```bash
+# Удалить старые таблицы
+docker compose exec clickhouse clickhouse-client --query="DROP TABLE IF EXISTS users_mv; DROP TABLE IF EXISTS users_kafka"
+
+# Перезапустить API (init_db.py создаст таблицы заново)
+docker compose restart api
+```
+
+### Нагрузочное тестирование
+
+```bash
+# Запуск k6 с 2500 VU на 1 минуту
+k6 run --vus 2500 --duration 1m k6/k6.js
+
+# Проверка количества записей после теста
+docker compose exec clickhouse clickhouse-client --query="SELECT count() FROM users"
+```
+
+### Мониторинг
+
+```bash
+# Логи API
+docker compose logs -f api
+
+# Логи Kafka
+docker compose logs -f kafka
+
+# Логи ClickHouse
+docker compose logs -f clickhouse
+```
