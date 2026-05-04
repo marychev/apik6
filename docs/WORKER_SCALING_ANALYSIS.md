@@ -227,15 +227,6 @@ Worker N  →  KafkaProducer #N  ─┘
 
 **Как работает `producer.flush()`:**
 
-```python
-# kafka_app/user_producer.py
-def send_users_batch(users: list[UserResponse]) -> int:
-    producer = get_producer()
-    for user in users:
-        producer.send(KAFKA_TOPIC_USERS, key=user.id, value=user.model_dump())
-    producer.flush()  # ← БЛОКИРУЕТ до подтверждения от брокера
-    return len(users)
-```
 
 `producer.flush()` — это **синхронный вызов**, который:
 1. Ждёт, пока все сообщения в буфере будут отправлены по сети

@@ -32,8 +32,8 @@ def init_tables():
             kafka_format = 'JSONEachRow',
             kafka_num_consumers = 1,
             kafka_poll_timeout_ms = 5000,
-            kafka_poll_max_batch_size = 500000,
-            kafka_flush_interval_ms = 15000
+            kafka_poll_max_batch_size = 1000000, 
+            kafka_flush_interval_ms = 30000
     """)
 
     client.command(f"""

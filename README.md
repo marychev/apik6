@@ -43,12 +43,7 @@ make ps        # статус контейнеров
 ### Создать пользователя (+ отправка в Kafka)
 
 ```bash
-curl -X POST http://localhost:8000/users/batch/1000
-```
-
-Ответ:
-```json
-{"sent": 1000, "saved_to_clickhouse": 1000}
+curl -X POST http://localhost:8000/users/batch/1
 ```
 
 ### Сброс данных

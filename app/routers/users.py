@@ -1,10 +1,10 @@
+import uuid
 from fastapi import APIRouter, Request
 
-from app.schemas import UserCreate
-from app.services import prepare_user
 from clickhouse_app.client import get_clickhouse_client
-from config import CLICKHOUSE_TABLE_USERS
-from kafka_app.user_producer import send_users_batch
+from config import CLICKHOUSE_TABLE_USERS, KAFKA_TOPIC_USERS
+# from kafka_app.user_producer import send_users_batch
+from app.schemas import UserResponse
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -18,12 +18,16 @@ def count() -> dict:
 
 @router.post("/batch/{n}")
 async def batch(request: Request, n: int = 1) -> dict:
-    users = [
-        prepare_user(UserCreate(name=f"user_{i}", email=f"user_{i}@example.com"))
-        for i in range(1, n + 1)
-    ]
+    if n > 1:
+        raise ValueError("Only batch of 1 user is supported in this example")
+
+    pk = str(uuid.uuid4())
+    user = UserResponse(id=pk, name=f"user_{pk}", email=f"user_{pk}@example.com")
 
     producer = request.app.state.kafka_producer
-    sent = await send_users_batch(producer, users)
 
-    return {"sent": sent}
+    await producer.send(
+        KAFKA_TOPIC_USERS, key=user.id, value=user.model_dump()
+    )
+
+    return {"sent": 1}

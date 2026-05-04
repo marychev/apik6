@@ -14,7 +14,12 @@
       "Bash(lscpu)",
       "Read(///wsl.localhost/Ubuntu/proc/**)",
       "Bash(docker info:*)",
-      "WebFetch(domain:ivanovo.hh.ru)"
+      "WebFetch(domain:ivanovo.hh.ru)",
+      "Bash(docker compose *)",
+      "Read(///wsl.localhost/Ubuntu/usr/**)",
+      "Read(///wsl.localhost/Ubuntu/snap/**)",
+      "Bash(env)",
+      "Bash(wsl bash *)"
     ],
     "additionalDirectories": [
       "\\home\\apik6\\k6",
