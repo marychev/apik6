@@ -9,7 +9,7 @@ from kafka_app.producer import create_producer, close_producer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_tables()
+    # init_tables()  # !!!!
     app.state.kafka_producer = await create_producer()
     yield
     await close_producer(app.state.kafka_producer)
