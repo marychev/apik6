@@ -1,7 +1,6 @@
 .PHONY: up down build logs restart ps clean k6-throughput k6-spike k6-consumer-lag batch-cron
 
 up:
-# 	docker compose up -d --build
 	docker compose up -d
 
 down:

@@ -1,16 +1,19 @@
+x-ch-engine-env: &ch_engine_env
+  CLICKHOUSE_HOST: clickhouse
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_ENGINE_NUM_CONSUMERS: ${KAFKA_ENGINE_NUM_CONSUMERS}
+  KAFKA_ENGINE_POLL_TIMEOUT_MS: ${KAFKA_ENGINE_POLL_TIMEOUT_MS}
+  KAFKA_ENGINE_POLL_MAX_BATCH_SIZE: ${KAFKA_ENGINE_POLL_MAX_BATCH_SIZE}
+  KAFKA_ENGINE_FLUSH_INTERVAL_MS: ${KAFKA_ENGINE_FLUSH_INTERVAL_MS}
+
 services:
   api:
     build: .
     ports:
       - "8000:8000"
     environment:
-      CLICKHOUSE_HOST: clickhouse
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      <<: *ch_engine_env
       UVICORN_WORKERS: ${UVICORN_WORKERS}
-      KAFKA_ENGINE_NUM_CONSUMERS: ${KAFKA_ENGINE_NUM_CONSUMERS}
-      KAFKA_ENGINE_POLL_TIMEOUT_MS: ${KAFKA_ENGINE_POLL_TIMEOUT_MS}
-      KAFKA_ENGINE_POLL_MAX_BATCH_SIZE: ${KAFKA_ENGINE_POLL_MAX_BATCH_SIZE}
-      KAFKA_ENGINE_FLUSH_INTERVAL_MS: ${KAFKA_ENGINE_FLUSH_INTERVAL_MS}
       KAFKA_PRODUCER_LINGER_MS: ${KAFKA_PRODUCER_LINGER_MS}
       KAFKA_PRODUCER_BATCH_SIZE: ${KAFKA_PRODUCER_BATCH_SIZE}
       KAFKA_PRODUCER_COMPRESSION: ${KAFKA_PRODUCER_COMPRESSION}
@@ -19,9 +22,18 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      # clickhouse:
-      #   condition: service_started
+      ch-init:
+        condition: service_completed_successfully
     restart: on-failure
+
+  ch-init:
+    build: .
+    command: ["python", "-m", "clickhouse_app.init_db"]
+    environment: *ch_engine_env
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: "no"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -57,14 +69,21 @@ services:
       retries: 10
       start_period: 30s
 
-  # clickhouse:
-  #   image: clickhouse/clickhouse-server:latest
-  #   environment:
-  #     CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-  #     CLICKHOUSE_PASSWORD: ""
-  #   ports:
-  #     - "8123:8123"
-  #     - "9000:9000"
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ""
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    # TCP-пробник через bash builtin — без spawn'а clickhouse-client (С++ binary).
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8123'"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   # api_go:
   #   build: ./go_api

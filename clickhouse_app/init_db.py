@@ -45,3 +45,7 @@ def init_tables():
         TO {CLICKHOUSE_TABLE_USERS}
         AS SELECT id, name, email FROM {CLICKHOUSE_TABLE_USERS}_kafka
     """)
+
+
+if __name__ == "__main__":
+    init_tables()
